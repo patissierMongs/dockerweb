@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Edit Upload{% endblock %}
+{% block content %}
+<h2>Edit "{{ file.filename }}"</h2>
+<form method="post">
+    <label>Urgency:</label><br/>
+    <select name="urgency" required>
+        <option value="Normal" {% if file.urgency == 'Normal' %}selected{% endif %}>Normal</option>
+        <option value="Urgent" {% if file.urgency == 'Urgent' %}selected{% endif %}>Urgent</option>
+    </select><br/><br/>
+    <label>Type:</label><br/>
+    <select name="type" required>
+        <option value="Individual" {% if file.type == 'Individual' %}selected{% endif %}>Individual</option>
+        <option value="Collaborative" {% if file.type == 'Collaborative' %}selected{% endif %}>Collaborative</option>
+    </select><br/><br/>
+    <input type="submit" value="Save Changes">
+</form>
+<a href="{{ url_for('uploadlist') }}">Back to Upload List</a>
+{% endblock %}
+

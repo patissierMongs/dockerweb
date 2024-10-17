@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Calendar{% endblock %}
+{% block content %}
+<h2>Calendar</h2>
+<div id='calendar'></div>
+
+<!-- Include FullCalendar library -->
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.7.2/main.min.css' rel='stylesheet' />
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.7.2/main.min.js'></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth'
+    });
+    calendar.render();
+  });
+</script>
+<a href="{{ url_for('mypage') }}">Back to My Page</a>
+{% endblock %}
+

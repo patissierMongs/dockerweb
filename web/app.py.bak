@@ -1,0 +1,220 @@
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
+from flask_wtf import FlaskForm
+from flask_sqlalchemy import SQLAlchemy
+from wtforms import StringField, PasswordField, BooleanField, SubmitField
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
+from wtforms.validators import DataRequired, EqualTo, ValidationError
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+from datetime import datetime
+import os
+
+# Add static_folder parameter to Flask app
+app = Flask(__name__, static_url_path='/static', static_folder='static')
+app.secret_key = 'your_secret_key'  # Replace with a secure secret key
+app.config['UPLOAD_FOLDER'] = 'uploads/'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
+
+db = SQLAlchemy(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+class RegistrationForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    password2 = PasswordField('Repeat Password', validators=[DataRequired(), EqualTo('password')])
+    is_admin = BooleanField('Admin User')
+    submit = SubmitField('Register')
+
+@app.route('/admin', methods=['GET', 'POST'])
+@login_required
+def admin():
+    if not current_user.is_admin:
+        return "Unauthorized", 403
+    users = User.query.all()
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(username=form.username.data, is_admin=form.is_admin.data)
+        user.password = form.password.data
+        try:
+            db.session.add(user)
+            db.session.commit()
+            return redirect(url_for('admin'))
+        except:
+            db.session.rollback()
+            return "Username already exists", 400
+    return render_template('admin.html', users=users, form=form)
+
+# User model
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), nullable=False, unique=True)
+    password_hash = db.Column(db.String(150), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+
+    # Password property
+    @property
+    def password(self):
+        raise AttributeError('password is not a readable attribute.')
+
+    @password.setter
+    def password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    # Verify password
+    def verify_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+# File model
+class File(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(300), nullable=False)
+    uploader_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    urgency = db.Column(db.String(50), nullable=False)
+    size = db.Column(db.Integer)
+    comment = db.Column(db.Text)
+    type = db.Column(db.String(50), nullable=False)
+    uploader = db.relationship('User', backref=db.backref('files', lazy=True))
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    uploader_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    uploader = db.relationship('User', backref=db.backref('comments', lazy=True))
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+@app.before_first_request
+def create_tables():
+    db.create_all()
+    # Create an admin user if not exists
+    if not User.query.filter_by(username='admin').first():
+        admin_user = User(username='admin', password='password', is_admin=True)
+        db.session.add(admin_user)
+        db.session.commit()
+
+@app.route('/', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('mypage'))
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        user = User.query.filter_by(username=username, password=password).first()
+        if user and user.verify_password(password):
+            login_user(user)
+            return redirect(url_for('mypage'))
+        else:
+            return "Invalid credentials", 401
+    return render_template('login.html')
+
+@app.route('/mypage')
+@login_required
+def mypage():
+    return render_template('mypage.html', username=current_user.username)
+
+from datetime import datetime
+
+@app.route('/upload', methods=['GET', 'POST'])
+@login_required
+def upload():
+    if request.method == 'POST':
+        comment = request.form.get('comment')
+        urgency = request.form.get('urgency')
+        type_ = request.form.get('type')
+
+        if 'document' in request.files and request.files['document'].filename != '':
+            file = request.files['document']
+            filename = secure_filename(file.filename)
+            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            size = os.path.getsize(file_path)
+
+            new_file = File(
+                filename=filename,
+                uploader_id=current_user.id,
+                urgency=urgency,
+                type=type_,
+                size=size,
+                comment=comment
+            )
+            db.session.add(new_file)
+            db.session.commit()
+            return redirect(url_for('uploadlist'))
+        elif comment:
+            new_comment = Comment(
+                content=comment,
+                uploader_id=current_user.id
+            )
+            db.session.add(new_comment)
+            db.session.commit()
+            return redirect(url_for('uploadlist'))
+        else:
+            return "No file or comment provided", 400
+    return render_template('upload.html')
+
+
+@app.route('/uploadlist')
+@login_required
+def uploadlist():
+    if current_user.is_admin:
+        files = File.query.all()
+        comments = Comment.query.all()
+    else:
+        files = File.query.filter_by(uploader_id=current_user.id).all()
+        comments = Comment.query.filter_by(uploader_id=current_user.id).all()
+    return render_template('uploadlist.html', files=files, comments=comments)
+
+
+@app.route('/download/<int:file_id>')
+@login_required
+def download(file_id):
+    file = File.query.get_or_404(file_id)
+    if not current_user.is_admin and file.uploader_id != current_user.id:
+        return "Unauthorized", 403
+    return send_from_directory(app.config['UPLOAD_FOLDER'], file.filename, as_attachment=True)
+
+@app.route('/delete/<int:file_id>', methods=['POST'])
+@login_required
+def delete(file_id):
+    file = File.query.get_or_404(file_id)
+    if not current_user.is_admin and file.uploader_id != current_user.id:
+        return "Unauthorized", 403
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    db.session.delete(file)
+    db.session.commit()
+    return redirect(url_for('uploadlist'))
+
+@app.route('/edit/<int:file_id>', methods=['GET', 'POST'])
+@login_required
+def edit(file_id):
+    file = File.query.get_or_404(file_id)
+    if not current_user.is_admin and file.uploader_id != current_user.id:
+        return "Unauthorized", 403
+    if request.method == 'POST':
+        file.urgency = request.form.get('urgency')
+        file.type = request.form.get('type')
+        db.session.commit()
+        return redirect(url_for('uploadlist'))
+    return render_template('edit_upload.html', file=file)
+
+@app.route('/calendar')
+@login_required
+def calendar():
+    return render_template('calendar.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0')
+

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<h2>Admin Dashboard</h2>
+
+<h3>Add New User</h3>
+<form method="post">
+    {{ form.hidden_tag() }}
+    {{ form.username.label }}<br>
+    {{ form.username(size=32) }}<br>
+    {{ form.password.label }}<br>
+    {{ form.password(size=32) }}<br>
+    {{ form.password2.label }}<br>
+    {{ form.password2(size=32) }}<br>
+    {{ form.is_admin.label }} {{ form.is_admin() }}<br><br>
+    {{ form.submit() }}
+</form>
+
+<h3>Existing Users</h3>
+<table border="1">
+    <tr>
+        <th>Username</th>
+        <th>Admin</th>
+    </tr>
+    {% for user in users %}
+    <tr>
+        <td>{{ user.username }}</td>
+        <td>{{ 'Yes' if user.is_admin else 'No' }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<a href="{{ url_for('mypage') }}">Back to My Page</a>
+{% endblock %}
+
