@@ -2,21 +2,47 @@
 {% block title %}Calendar{% endblock %}
 {% block content %}
 <h2>Calendar</h2>
-<div id='calendar'></div>
+
+<h3>Your Day-Off Balance</h3>
+<p>Used: {{ 24 - current_user.calculate_days_off() }} days</p>
+<p>Available: {{ current_user.calculate_days_off() }} days</p>
 
 <!-- Include FullCalendar library -->
-<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.7.2/main.min.css' rel='stylesheet' />
-<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.7.2/main.min.js'></script>
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.7.2/main.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.7.2/main.min.js"></script>
+
+<div id='calendar'></div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
+    var leaves = [
+        // Add leave events for the current user
+        {% for leave in leaves %}
+        {
+            title: '{{ leave.reason }}',
+            start: '{{ leave.start_date }}',
+            end: '{{ leave.end_date + timedelta(days=1) }}',
+            color: '{% if leave.status == "Approved" %}red{% else %}yellow{% endif %}',
+            allDay: true
+        },
+        {% endfor %}
+    ];
     var calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'dayGridMonth'
+        initialView: 'dayGridMonth',
+        events: leaves,
+        dateClick: function(info) {
+            var leaveRequestUrl = "{{ url_for('request_leave') }}";
+            var reason = prompt("Would you like to request leave on " + info.dateStr + "? If yes, specify reason:");
+            if (reason) {
+                window.location.href = leaveRequestUrl + "?date=" + info.dateStr + "&reason=" + encodeURIComponent(reason);
+            }
+        }
     });
     calendar.render();
-  });
+});
 </script>
+
 <a href="{{ url_for('mypage') }}">Back to My Page</a>
 {% endblock %}
 

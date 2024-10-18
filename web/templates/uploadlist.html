@@ -1,60 +1,76 @@
 {% extends "base.html" %}
 {% block title %}My Uploads{% endblock %}
 {% block content %}
-<h2>{% if current_user.is_admin %}All Uploads{% else %}My Uploads{% endif %}</h2>
-<table border="1">
-    <tr>
-        <th>Filename</th>
-        <th>Urgency</th>
-        <th>Size</th>
-        <th>Comment</th>
-        <th>Type</th>
-        <th>Actions</th>
-    </tr>
-    {% for file in files %}
-    <tr>
-        <td>{{ file.filename }}</td>
-        <td>
-            {% if file.urgency == 'Urgent' %}
-                <img src="{{ url_for('static', filename='icons/urgent.png') }}" class="icon" alt="Urgent">
-            {% else %}
-                <img src="{{ url_for('static', filename='icons/normal.png') }}" class="icon" alt="Normal">
-            {% endif %}
-        </td>
-        <td>{{ (file.size / 1024) | round(2) }} KB</td>
-        <td>{{ file.comment }}</td>
-        <td>
-            {% if file.type == 'Collaborative' %}
-                <img src="{{ url_for('static', filename='icons/collaborative.png') }}" class="icon" alt="Collaborative">
-            {% else %}
-                <img src="{{ url_for('static', filename='icons/individual.png') }}" class="icon" alt="Individual">
-            {% endif %}
-        </td>
-        <td>
-            <a href="{{ url_for('download', file_id=file.id) }}">Download</a>
-            <a href="{{ url_for('edit', file_id=file.id) }}">Edit</a>
-            <form action="{{ url_for('delete', file_id=file.id) }}" method="post" style="display:inline;">
-                <input type="submit" value="Delete">
-            </form>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
-<h3>Comments</h3>
-<table border="1">
-    <tr>
-        <th>Content</th>
-        <th>Uploader</th>
-        <th>Timestamp</th>
-    </tr>
-    {% for comment in comments %}
-    <tr>
-        <td>{{ comment.content }}</td>
-        <td>{{ comment.uploader.username }}</td>
-        <td>{{ comment.timestamp }}</td>
-    </tr>
-    {% endfor %}
-</table>
-<a href="{{ url_for('mypage') }}">Back to My Page</a>
+<div class="container mt-4">
+    <h2>{% if current_user.is_admin %}All Uploads{% else %}My Uploads{% endif %}</h2>
+
+    <!-- Uploads Table -->
+    <table class="table table-bordered table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Filename</th>
+                <th>Urgency</th>
+                <th>Size</th>
+                <th>Comment</th>
+                <th>Type</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in files %}
+            <tr>
+                <td>{{ file.filename }}</td>
+                <td>
+                    {% if file.urgency == 'Urgent' %}
+                        <img src="{{ url_for('static', filename='icons/urgent.png') }}" class="icon" alt="Urgent" width="24">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='icons/normal.png') }}" class="icon" alt="Normal" width="24">
+                    {% endif %}
+                </td>
+                <td>{{ (file.size / 1024) | round(2) }} KB</td>
+                <td>{{ file.comment }}</td>
+                <td>
+                    {% if file.type == 'Collaborative' %}
+                        <img src="{{ url_for('static', filename='icons/collaborative.png') }}" class="icon" alt="Collaborative" width="24">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='icons/individual.png') }}" class="icon" alt="Individual" width="24">
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('download', file_id=file.id) }}" class="btn btn-sm btn-outline-primary">Download</a>
+                    <a href="{{ url_for('edit', file_id=file.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                    <form action="{{ url_for('delete', file_id=file.id) }}" method="post" class="d-inline">
+                        <input type="submit" value="Delete" class="btn btn-sm btn-outline-danger">
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Comments Section -->
+    <h3>Comments</h3>
+    <table class="table table-bordered table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Content</th>
+                <th>Uploader</th>
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for comment in comments %}
+            <tr>
+                <td>{{ comment.content }}</td>
+                <td>{{ comment.uploader.username }}</td> <!-- Ensure uploader is shown correctly -->
+                <td>{{ comment.timestamp }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Back Button -->
+    <a href="{{ url_for('mypage') }}" class="btn btn-outline-secondary mt-3">Back to My Page</a>
+</div>
 {% endblock %}
 

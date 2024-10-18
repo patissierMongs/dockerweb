@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Leave Requests Management</h2>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for leave in leaves %}
+        <tr>
+            <td>{{ leave.user.username }}</td>
+            <td>{{ leave.start_date }}</td>
+            <td>{{ leave.end_date }}</td>
+            <td>{{ leave.reason }}</td>
+            <td>{{ leave.status }}</td>
+            <td>
+                <form method="post">
+                    <input type="hidden" name="leave_id" value="{{ leave.id }}">
+                    <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+                    <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('admin') }}" class="btn btn-secondary">Back to Admin Dashboard</a>
+{% endblock %}
+

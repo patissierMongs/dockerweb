@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Admin Calendar{% endblock %}
+{% block content %}
+<h2>Admin Calendar</h2>
+
+<!-- Include FullCalendar library -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.7.2/main.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.7.2/main.min.js"></script>
+
+<div id='calendar'></div>
+<h3>Leave Logs</h3>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>User</th>
+            <th>Action</th>
+            <th>Details</th>
+            <th>Timestamp</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        {% if 'leave request' in log.action.lower() %}
+        <tr>
+            <td>{{ log.user.username }}</td>
+            <td>{{ log.action }}</td>
+            <td>{{ log.details }}</td>
+            <td>{{ log.timestamp }}</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var leaves = [
+        // Add leave events for all users
+        {% for leave in leaves %}
+        {
+            title: '{{ leave.user.username }} - {{ leave.reason }}',
+            start: '{{ leave.start_date }}',
+            end: '{{ (leave.end_date + timedelta(days=1))|string }}',  // Adjusted
+            color: '{% if leave.status == "Approved" %}red{% else %}yellow{% endif %}',
+            allDay: true,
+            extendedProps: {
+                leaveId: {{ leave.id }},
+                status: '{{ leave.status }}'
+            }
+        },
+        {% endfor %}
+    ];
+
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        events: leaves,
+        eventClick: function(info) {
+            var leaveId = info.event.extendedProps.leaveId;
+            var status = info.event.extendedProps.status;
+            if (status === 'Pending') {
+                if (confirm('Do you want to approve this leave request?')) {
+                    window.location.href = "{{ url_for('manage_leaves') }}?approve=" + leaveId;
+                } else if (confirm('Do you want to reject this leave request?')) {
+                    window.location.href = "{{ url_for('manage_leaves') }}?reject=" + leaveId;
+                }
+            } else {
+                alert('This leave request has already been ' + status + '.');
+            }
+        }
+    });
+
+    calendar.render();  // Missing render call
+});
+</script>
+
+<a href="{{ url_for('admin') }}">Back to Admin Page</a>
+{% endblock %}
+
