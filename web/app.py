@@ -8,7 +8,7 @@ from wtforms.validators import DataRequired, EqualTo, ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
-import os
+import os, subprocess
 
 app = Flask(__name__, static_url_path='/static', static_folder='static')
 app.secret_key = 'your_secret_key'  # Replace with a secure secret key
@@ -93,13 +93,17 @@ class File(db.Model):
     size = db.Column(db.Integer)
     comment = db.Column(db.Text)
     type = db.Column(db.String(50), nullable=False)
+    upload_time = db.Column(db.DateTime, default=datetime.utcnow)
     uploader = db.relationship('User', backref=db.backref('files', lazy=True))
+    pdf_filename = db.Column(db.String(300), nullable=True)
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     uploader_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    file_id = db.Column(db.Integer, db.ForeignKey('file.id'), nullable=True)
     uploader = db.relationship('User', backref=db.backref('comments', lazy=True))
+    file = db.relationship('File', backref=db.backref('comments', lazy=True)) 
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 @login_manager.user_loader
@@ -144,6 +148,23 @@ def admin():
     logs = ActivityLog.query.order_by(ActivityLog.timestamp.desc()).limit(10).all()
     return render_template('admin.html', users=users, form=form)
 
+@app.route('/uploads/<filename>')
+@login_required
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/view/<int:file_id>')
+@login_required
+def view_file(file_id):
+    file = File.query.get_or_404(file_id)
+    if not current_user.is_admin and file.uploader_id != current_user.id:
+        return "Unauthorized", 403
+    if file.pdf_filename:
+        return render_template('view_file.html', file=file)
+    else:
+        flash('File cannot be viewed online.')
+        return redirect(url_for('uploadlist'))
+
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -164,13 +185,16 @@ def login():
 def mypage():
     return render_template('mypage.html', username=current_user.username)
 
+def convert_to_pdf(input_path, output_path):
+    subprocess.call(['libreoffice', '--headless', '--convert-to', 'pdf', input_path, '--outdir', output_path])
+
 @app.route('/upload', methods=['GET', 'POST'])
 @login_required
 def upload():
     if request.method == 'POST':
-        comment = request.form.get('comment')
-        urgency = request.form.get('urgency')
-        type_ = request.form.get('type')
+        comment_content = request.form.get('comment')
+        urgency = request.form.get('urgency', '일반')
+        type_ = request.form.get('type', '개인')
 
         if 'document' in request.files and request.files['document'].filename != '':
             file = request.files['document']
@@ -180,13 +204,19 @@ def upload():
             file.save(file_path)
             size = os.path.getsize(file_path)
 
+            # Convert to PDF
+            convert_to_pdf(file_path, app.config['UPLOAD_FOLDER'])
+            pdf_filename = os.path.splitext(filename)[0] + '.pdf'
+
             new_file = File(
                 filename=filename,
+                pdf_filename=pdf_filename,
                 uploader_id=current_user.id,
                 urgency=urgency,
                 type=type_,
                 size=size,
-                comment=comment
+                comment=comment_content,
+                upload_time=datetime.utcnow()
             )
             db.session.add(new_file)
             new_log = ActivityLog(
@@ -197,23 +227,27 @@ def upload():
             db.session.add(new_log)
             db.session.commit()
             return redirect(url_for('uploadlist'))
-        elif comment:
+        elif comment_content:
             new_comment = Comment(
-                content=comment,
+                content=comment_content,
                 uploader_id=current_user.id
             )
             db.session.add(new_comment)
+
+            # Log Upload
             new_log = ActivityLog(
                 user_id=current_user.id,
-                action='Added a comment',
-                details=f'Comment: {comment}'
+                action='Uploaded a comment',
+                details=f'Comment: {comment_content}'
             )
             db.session.add(new_log)
             db.session.commit()
             return redirect(url_for('uploadlist'))
         else:
-            return "No file or comment provided", 400
+            flash('No file provided', 'error')
+            return redirect(url_for('upload'))
     return render_template('upload.html')
+
 
 @app.route('/uploadlist')
 @login_required

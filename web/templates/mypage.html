@@ -1,25 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Welcome, {{ username }}!</h2>
+{% if current_user.is_admin %}
+<h2 style="color: red;">
+    <i class="fas fa-user-shield"></i> 관리자 계정입니다!, {{ username }}!
+</h2>
+{% else %}
+<h2>{{ username }} 으로 접속중입니다.</h2>
+{% endif %}
 
 <div class="d-flex flex-row">
     <ul class="nav flex-column">
         <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('upload') }}">Upload File</a>
+            <a class="nav-link" href="{{ url_for('upload') }}">파일 업로드</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('uploadlist') }}">My Uploads</a>
+            <a class="nav-link" href="{{ url_for('uploadlist') }}">업로드 목록</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('calendar') }}">Calendar</a>
+            <a class="nav-link" href="{{ url_for('calendar') }}">캘린더</a>
         </li>
         {% if current_user.is_admin %}
         <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('admin') }}">Admin Dashboard</a>
+            <a class="nav-link" href="{{ url_for('admin') }}">관리자 페이지</a>
         </li>
         {% endif %}
         <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+            <a class="nav-link" href="{{ url_for('logout') }}">로그아웃</a>
         </li>
     </ul>
 </div>

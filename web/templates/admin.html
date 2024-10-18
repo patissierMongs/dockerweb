@@ -7,23 +7,23 @@
 <table class="table table-bordered">
     <thead>
         <tr>
-            <th>Username</th>
-            <th>Is Admin</th>
-            <th>Date Joined</th>
+            <th>사용자 계정</th>
+            <th>관리자 여부</th>
+            <th>입사일</th>
         </tr>
     </thead>
     <tbody>
         {% for user in users %}
         <tr>
             <td>{{ user.username }}</td>
-            <td>{{ 'Yes' if user.is_admin else 'No' }}</td>
+            <td>{{ '관리자' if user.is_admin else '사원' }}</td>
             <td>{{ user.date_joined }}</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 
-<h3>Add New User</h3>
+<h3>사원 추가</h3>
 <form method="POST">
     {{ form.hidden_tag() }}
     <div class="mb-3">
@@ -46,10 +46,10 @@
 <table class="table table-bordered">
     <thead>
         <tr>
-            <th>User</th>
-            <th>Action</th>
-            <th>Details</th>
-            <th>Timestamp</th>
+            <th>사용자 계정</th>
+            <th>활동</th>
+            <th>세부 사항</th>
+            <th>시간</th>
         </tr>
     </thead>
     <tbody>
@@ -65,7 +65,7 @@
 </table>
 {% if logs|length >= 10 %}
     <form method="GET" action="{{ url_for('admin_logs') }}">
-        <button type="submit" class="btn btn-secondary">Load More</button>
+        <button type="submit" class="btn btn-secondary">더보기</button>
     </form>
 {% endif %}
 {% endblock %}

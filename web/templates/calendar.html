@@ -17,12 +17,12 @@
 document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
     var leaves = [
-        // Add leave events for the current user
+        // Add leave events for all users
         {% for leave in leaves %}
         {
-            title: '{{ leave.reason }}',
+            title: '{{ leave.user.username }} - {{ leave.reason }}',
             start: '{{ leave.start_date }}',
-            end: '{{ leave.end_date + timedelta(days=1) }}',
+            end: '{{ (leave.end_date + timedelta(days=1))|string }}',
             color: '{% if leave.status == "Approved" %}green{% elif leave.status == "Rejected" %}red{% else %}yellow{% endif %}',
             allDay: true
         },

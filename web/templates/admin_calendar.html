@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Admin Calendar{% endblock %}
 {% block content %}
-<h2>Admin Calendar</h2>
+<h2>관리자 캘린더입니다.</h2>
 
 <!-- Include FullCalendar library -->
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.7.2/main.min.css" rel="stylesheet" />
@@ -12,10 +12,10 @@
 <table class="table table-bordered">
     <thead>
         <tr>
-            <th>User</th>
-            <th>Action</th>
-            <th>Details</th>
-            <th>Timestamp</th>
+            <th>사용자계정</th>
+            <th>활동</th>
+            <th>세부 사항</th>
+            <th>시간</th>
         </tr>
     </thead>
     <tbody>
@@ -41,14 +41,14 @@ document.addEventListener('DOMContentLoaded', function() {
         {
             title: '{{ leave.user.username }} - {{ leave.reason }}',
             start: '{{ leave.start_date }}',
-            end: '{{ (leave.end_date + timedelta(days=1))|string }}',  // Adjusted
+            end: '{{ (leave.end_date + timedelta(days=1)).isoformat() }}',  // Adjusted
             color: '{% if leave.status == "Approved" %}green{% elif leave.status == "Rejected" %}red{% else %}yellow{% endif %}',
             allDay: true,
             extendedProps: {
                 leaveId: {{ leave.id }},
                 status: '{{ leave.status }}'
             }
-        },
+        }{% if not loop.last %},{% endif %}
         {% endfor %}
     ];
 
@@ -56,24 +56,64 @@ document.addEventListener('DOMContentLoaded', function() {
         initialView: 'dayGridMonth',
         events: leaves,
         eventClick: function(info) {
+            // Prevent the click event from bubbling up
+            info.jsEvent.stopPropagation();
+
             var leaveId = info.event.extendedProps.leaveId;
             var status = info.event.extendedProps.status;
             if (status === 'Pending') {
-                if (confirm('Do you want to approve this leave request?')) {
+                var popup = document.createElement('div');
+                popup.style.position = 'absolute';
+                popup.style.left = info.jsEvent.pageX + 'px';
+                popup.style.top = info.jsEvent.pageY + 'px';
+                popup.style.backgroundColor = 'white';
+                popup.style.border = '1px solid black';
+                popup.style.padding = '10px';
+                popup.style.zIndex = 1000;
+
+                var message = document.createElement('p');
+                message.textContent = '연차 신청을 승인하시겠습니까?';
+                popup.appendChild(message);
+
+                var yesButton = document.createElement('button');
+                yesButton.textContent = '승인';
+                yesButton.onclick = function(event) {
+                    event.stopPropagation();
                     window.location.href = "{{ url_for('manage_leaves') }}?approve=" + leaveId;
-                } else if (confirm('Do you want to reject this leave request?')) {
-                    window.location.href = "{{ url_for('manage_leaves') }}?reject=" + leaveId;
-                }
+                };
+                popup.appendChild(yesButton);
+
+                var noButton = document.createElement('button');
+                noButton.textContent = '거부';
+                noButton.onclick = function(event) {
+                    event.stopPropagation();
+                    var comment = prompt('거부 사유를 입력하세요:');
+                    if (comment) {
+                        window.location.href = "{{ url_for('manage_leaves') }}?reject=" + leaveId + "&comment=" + encodeURIComponent(comment);
+                    }
+                };
+                popup.appendChild(noButton);
+
+                document.body.appendChild(popup);
+
+                // Delay attaching the click event listener to avoid immediate execution
+                setTimeout(function() {
+                    document.addEventListener('click', function(event) {
+                        if (!popup.contains(event.target)) {
+                            popup.remove();
+                        }
+                    }, { once: true });
+                }, 0);
+
             } else {
                 alert('This leave request has already been ' + status + '.');
             }
         }
     });
 
-    calendar.render();  // Missing render call
+    calendar.render();
 });
 </script>
 
 <a href="{{ url_for('admin') }}">Back to Admin Page</a>
 {% endblock %}
-
