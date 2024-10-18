@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
             title: '{{ leave.reason }}',
             start: '{{ leave.start_date }}',
             end: '{{ leave.end_date + timedelta(days=1) }}',
-            color: '{% if leave.status == "Approved" %}red{% else %}yellow{% endif %}',
+            color: '{% if leave.status == "Approved" %}green{% elif leave.status == "Rejected" %}red{% else %}yellow{% endif %}',
             allDay: true
         },
         {% endfor %}

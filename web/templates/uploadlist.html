@@ -21,6 +21,7 @@
             {% for file in files %}
             <tr>
                 <td>{{ file.filename }}</td>
+                <td>{{ file.uploader.username }}</td> <!-- Ensure uploader is shown correctly -->
                 <td>
                     {% if file.urgency == 'Urgent' %}
                         <img src="{{ url_for('static', filename='icons/urgent.png') }}" class="icon" alt="Urgent" width="24">
