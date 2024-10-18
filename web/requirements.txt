@@ -10,3 +10,4 @@ Jinja2==3.0.1
 click==8.0.1
 celery
 redis
+markdown

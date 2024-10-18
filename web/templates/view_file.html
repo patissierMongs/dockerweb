@@ -3,10 +3,14 @@
 {% block content %}
 <h2>Viewing: {{ file.filename }}</h2>
 
-{% if file.pdf_filename.endswith('.pdf') %}
+{% if file_type == 'markdown' %}
+    <div>{{ content | safe }}</div>  <!-- Render Markdown as HTML -->
+{% elif file_type == 'text' %}
+    <pre>{{ content }}</pre>
+{% elif file_type == 'pdf' %}
     <embed src="{{ file_url }}" width="100%" height="600px" type="application/pdf">
-{% elif file.pdf_filename.endswith(('.png', '.jpg', '.jpeg', '.gif')) %}
-    <img src="{{ file_url }}" alt="{{ file.filename }}">
+{% elif file_type == 'image' %}
+    <img src="{{ file_url }}" alt="{{ file.filename }}" style="max-width: 100%; height: auto;">
 {% else %}
     <p>Cannot display this file type.</p>
 {% endif %}

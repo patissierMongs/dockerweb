@@ -9,7 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
 from celery import Celery
-import os, subprocess
+import os, subprocess, markdown
 
 SUPPORTED_EXTENSIONS = ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp']
 
@@ -175,12 +175,45 @@ def view_file(file_id):
     if not current_user.is_admin and file.uploader_id != current_user.id:
         return "Unauthorized", 403
 
-    if file.pdf_filename:
+    # Get the file extension
+    file_extension = os.path.splitext(file.filename)[1].lower()
+
+    # Handle Markdown files
+    if file_extension == '.md':
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            html_content = markdown.markdown(content)
+            return render_template('view_file.html', file=file, content=html_content, file_type='markdown')
+        except Exception as e:
+            flash(f'Error reading the file: {str(e)}')
+            return redirect(url_for('uploadlist'))
+
+    # Handle other text-based files
+    if file_extension in ['.txt', '.csv', '.json', '.xml', '.py', '.html', '.css', '.js', '.rtf']:
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return render_template('view_file.html', file=file, content=content, file_type='text')
+        except Exception as e:
+            flash(f'Error reading the file: {str(e)}')
+            return redirect(url_for('uploadlist'))
+
+    # Handle PDF files
+    if file.pdf_filename and file.pdf_filename.endswith('.pdf'):
         file_url = url_for('uploaded_file', filename=file.pdf_filename)
-        return render_template('view_file.html', file=file, file_url=file_url)
-    else:
-        flash('File cannot be viewed online.')
-        return redirect(url_for('uploadlist'))
+        return render_template('view_file.html', file=file, file_url=file_url, file_type='pdf')
+
+    # Handle image files
+    if file_extension in ['.png', '.jpg', '.jpeg', '.gif']:
+        file_url = url_for('uploaded_file', filename=file.filename)
+        return render_template('view_file.html', file=file, file_url=file_url, file_type='image')
+
+    # Unsupported file type
+    flash('This file type cannot be displayed.')
+    return redirect(url_for('uploadlist'))
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
