@@ -4,15 +4,15 @@
 <h2>Edit "{{ file.filename }}"</h2>
 <form method="post">
     <label>긴급여부:</label><br/>
-    <select name="긴급">
-        <option value="Urgent" {% if file.urgency == 'Urgent' %}selected{% else %}>Normal{% endif %}>Urgent</option>
-    </select><br/><br/>
+    <input type="checkbox" name="긴급" value="긴급" {% if file.urgency == 'Urgent' %}checked{% endif %}> 긴급<br/><br/>
+    
     <label>협업 여부:</label><br/>
-    <select name="협업">
-        <option value="Collaborative" {% if file.type == 'Collaborative' %}selected{% else %}>Individual{% endif %}>Collaborative</option>
-    </select><br/><br/>
+    <input type="checkbox" name="협업" value="협업" {% if file.type == 'Collaborative' %}checked{% endif %}> 협업<br/><br/>
+    
+    <input type="hidden" name="개인" value="개인">
+    <input type="hidden" name="일반" value="일반">
+    
     <input type="submit" value="Save Changes">
 </form>
 <a href="{{ url_for('uploadlist') }}">Back to Upload List</a>
 {% endblock %}
-
