@@ -2,22 +2,39 @@
 {% block title %}Upload Document{% endblock %}
 {% block content %}
 <h2>파일을 업로드하세요.</h2>
-<form method="post" enctype="multipart/form-data">
+<form id="uploadForm" enctype="multipart/form-data">
     <label>파일을 선택하세요.</label><br/>
-    <input type="file" name="document" required><br/><br/>
-
+    <input type="file" name="document"><br/><br/>
     <label>코멘트를 남기세요.</label><br/>
     <textarea name="comment" rows="4" cols="50"></textarea><br/><br/>
-    
     <label>긴급 여부</label><br/>
-    <input type="checkbox" name="urgency" value="긴급"> 긴급<br/>
-    <br/>
-
+    <input type="checkbox" name="urgency" value="긴급"> 긴급<br/><br/>
     <label>협동 여부</label><br/>
-    <input type="checkbox" name="type" value="협동"> 협동<br/>
-    <br/>
-    
-    <input type="submit" value="업로드">
+    <input type="checkbox" name="type" value="협동"> 협동<br/><br/>
+    <button type="submit">업로드</button>
 </form>
+
+<script>
+document.getElementById('uploadForm').addEventListener('submit', function(event) {
+    event.preventDefault();
+    var formData = new FormData(this);
+
+    fetch('/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('File uploaded successfully!');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+});
+</script>
 <a href="{{ url_for('mypage') }}">초기 화면으로 이동</a>
 {% endblock %}

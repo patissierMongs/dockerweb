@@ -8,4 +8,5 @@ Werkzeug==2.0.1
 itsdangerous==2.0.1
 Jinja2==3.0.1
 click==8.0.1
-
+celery
+redis

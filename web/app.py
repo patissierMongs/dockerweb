@@ -8,12 +8,27 @@ from wtforms.validators import DataRequired, EqualTo, ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
+from celery import Celery
 import os, subprocess
+
+SUPPORTED_EXTENSIONS = ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp']
+
+def make_celery(app):
+    celery = Celery(app.import_name, backend=app.config['CELERY_RESULT_BACKEND'],
+                    broker=app.config['CELERY_BROKER_URL'])
+    celery.conf.update(app.config)
+    return celery
 
 app = Flask(__name__, static_url_path='/static', static_folder='static')
 app.secret_key = 'your_secret_key'  # Replace with a secure secret key
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
+app.config.update(
+    CELERY_BROKER_URL='redis://localhost:6379/0',
+    CELERY_RESULT_BACKEND='redis://localhost:6379/0'
+)
+
+celery = make_celery(app)
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
@@ -159,8 +174,10 @@ def view_file(file_id):
     file = File.query.get_or_404(file_id)
     if not current_user.is_admin and file.uploader_id != current_user.id:
         return "Unauthorized", 403
+
     if file.pdf_filename:
-        return render_template('view_file.html', file=file)
+        file_url = url_for('uploaded_file', filename=file.pdf_filename)
+        return render_template('view_file.html', file=file, file_url=file_url)
     else:
         flash('File cannot be viewed online.')
         return redirect(url_for('uploadlist'))
@@ -185,8 +202,29 @@ def login():
 def mypage():
     return render_template('mypage.html', username=current_user.username)
 
+@celery.task
 def convert_to_pdf(input_path, output_path):
-    subprocess.call(['libreoffice', '--headless', '--convert-to', 'pdf', input_path, '--outdir', output_path])
+    file_extension = os.path.splitext(input_path)[1].lower()
+    
+    if file_extension in ['.pdf', '.png', '.jpg', '.jpeg', '.gif']:
+        return os.path.basename(input_path)
+    
+    # Check if the file type is supported for conversion
+    if file_extension not in SUPPORTED_EXTENSIONS:
+        print(f"File {input_path} is not a supported type for conversion, skipping.")
+        return
+
+    if file_extension in SUPPORTED_EXTENSIONS:
+        try:
+            subprocess.call(['libreoffice', '--headless', '--convert-to', 'pdf', input_path, '--outdir', output_path])
+            pdf_filename = os.path.splitext(os.path.basename(input_path))[0] + '.pdf'
+            return pdf_filename
+        except Exception as e:
+            print(f"Error during PDF conversion: {e}")
+            return None
+    else:
+        print(f"File {input_path} is not a supported type for conversion, skipping.")
+        return None
 
 @app.route('/upload', methods=['GET', 'POST'])
 @login_required
@@ -204,9 +242,8 @@ def upload():
             file.save(file_path)
             size = os.path.getsize(file_path)
 
-            # Convert to PDF
-            convert_to_pdf(file_path, app.config['UPLOAD_FOLDER'])
-            pdf_filename = os.path.splitext(filename)[0] + '.pdf'
+            # Convert to PDF if necessary
+            pdf_filename = convert_to_pdf(file_path, app.config['UPLOAD_FOLDER'])
 
             new_file = File(
                 filename=filename,
@@ -219,6 +256,9 @@ def upload():
                 upload_time=datetime.utcnow()
             )
             db.session.add(new_file)
+            db.session.commit()
+
+            # Log the upload action
             new_log = ActivityLog(
                 user_id=current_user.id,
                 action='Uploaded a file',
@@ -226,15 +266,18 @@ def upload():
             )
             db.session.add(new_log)
             db.session.commit()
+
             return redirect(url_for('uploadlist'))
         elif comment_content:
+            # Handle comment upload
             new_comment = Comment(
                 content=comment_content,
                 uploader_id=current_user.id
             )
             db.session.add(new_comment)
+            db.session.commit()
 
-            # Log Upload
+            # Log the comment action
             new_log = ActivityLog(
                 user_id=current_user.id,
                 action='Uploaded a comment',
@@ -242,12 +285,12 @@ def upload():
             )
             db.session.add(new_log)
             db.session.commit()
+
             return redirect(url_for('uploadlist'))
         else:
-            flash('No file provided', 'error')
+            flash('No file or comment provided.', 'error')
             return redirect(url_for('upload'))
     return render_template('upload.html')
-
 
 @app.route('/uploadlist')
 @login_required
