@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Calendar{% endblock %}
 {% block content %}
-<h2>Calendar</h2>
+<h2>캘린더</h2>
 
-<h3>Your Day-Off Balance</h3>
-<p>Used: {{ 24 - current_user.calculate_days_off() }} days</p>
-<p>Available: {{ current_user.calculate_days_off() }} days</p>
+<h3>연차 신청 방법: 날짜 클릭 후 사유 입력</h3>
+<p>올해 사용한 연차 수: {{ 24 - current_user.calculate_days_off() }} days</p>
+<p>사용 가능한 연차 수: {{ current_user.calculate_days_off() }} days</p>
 
 <!-- Include FullCalendar library -->
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.7.2/main.min.css" rel="stylesheet" />
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
         events: leaves,
         dateClick: function(info) {
             var leaveRequestUrl = "{{ url_for('request_leave') }}";
-            var reason = prompt("Would you like to request leave on " + info.dateStr + "? If yes, specify reason:");
+            var reason = prompt("다음 날짜로 연차를 신청하시겠습니까?" + info.dateStr + "맞다면 사유를 입력하세요.");
             if (reason) {
                 window.location.href = leaveRequestUrl + "?date=" + info.dateStr + "&reason=" + encodeURIComponent(reason);
             }
